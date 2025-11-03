@@ -1,0 +1,25 @@
+# State files
+.orbs-tee-state.json
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-*
+
+# Local config overrides
+config.local.json
+
+# SSH keys (never commit these!)
+*.pem
+*.key
+id_rsa*
