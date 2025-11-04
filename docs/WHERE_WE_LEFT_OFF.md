@@ -1,381 +1,353 @@
 # Where We Left Off - ORBS TEE Development
 
-**Last Updated**: 2025-11-03 14:23 UTC
-**Session**: SSH Reconnection Setup
+**Last Updated**: 2025-11-04 11:45 UTC
+**Session**: Nitro Enclave Reboot Required
 
 ---
 
-## 📍 Current Status
+## 📍 IMMEDIATE ACTION REQUIRED
+
+### 🚨 REBOOT NEEDED TO ENABLE NITRO ENCLAVES
+
+**Status**: Ready to switch from mock enclave to real Nitro enclave
+**Blocker**: `/dev/nsm` device does not exist - requires instance reboot
+
+---
+
+## 🎯 What Needs To Happen
+
+### BEFORE REBOOT
+
+✅ **All repositories organized and pushed to GitHub**:
+- `orbs-tee-scripts` - All scripts and documentation organized
+- `orbs-tee-enclave-nitro` - Rust enclave SDK
+- `orbs-tee-host` - TypeScript host API
+
+✅ **Nitro CLI installed**: `/tmp/nitro-cli/build/install/usr/bin/nitro-cli` (v1.4.3)
+
+✅ **Nitro Enclaves enabled** on EC2 instance (via AWS Console)
+
+✅ **Kernel module loaded**: `nitro_enclaves` module is active
+
+❌ **NSM device missing**: `/dev/nsm` does not exist (needs reboot)
+
+❌ **EIF file deleted**: `price-oracle.eif` was removed during cleanup
+
+### AFTER REBOOT - Steps to Execute
+
+#### 1. Verify NSM Device Exists
+```bash
+ls -la /dev/nsm
+# Should show: crw------- 1 root root 10, 144 ...
+```
+
+#### 2. Rebuild the Enclave Image File (EIF)
+```bash
+cd /home/ubuntu/orbs-tee-enclave-nitro
+
+# Option A: If Docker image still exists
+/tmp/nitro-cli/build/install/usr/bin/nitro-cli build-enclave \
+  --docker-uri orbs-tee-enclave:latest \
+  --output-file /home/ubuntu/price-oracle.eif
+
+# Option B: If Docker image is missing, rebuild from scratch
+docker build -t orbs-tee-enclave:latest -f examples/price-oracle/Dockerfile .
+/tmp/nitro-cli/build/install/usr/bin/nitro-cli build-enclave \
+  --docker-uri orbs-tee-enclave:latest \
+  --output-file /home/ubuntu/price-oracle.eif
+```
+
+#### 3. Stop Mock Enclave Service
+```bash
+sudo systemctl stop orbs-tee-enclave
+sudo systemctl disable orbs-tee-enclave
+```
+
+#### 4. Run Real Nitro Enclave
+```bash
+sudo /tmp/nitro-cli/build/install/usr/bin/nitro-cli run-enclave \
+  --eif-path /home/ubuntu/price-oracle.eif \
+  --cpu-count 2 \
+  --memory 1024 \
+  --debug-mode
+```
+
+**Important**: Note the **EnclaveCID** from the output (e.g., 16)
+
+#### 5. Verify Enclave is Running
+```bash
+/tmp/nitro-cli/build/install/usr/bin/nitro-cli describe-enclaves
+```
+
+#### 6. Update Host Service to Use vsocket
+The host config already has vsocket configured in `/home/ubuntu/orbs-tee-host/config.json`:
+```json
+{
+  "vsock": {
+    "cid": 16,
+    "port": 5000,
+    "timeoutMs": 30000
+  }
+}
+```
+
+Verify the CID matches the enclave's CID, then restart:
+```bash
+sudo systemctl restart orbs-tee-host
+```
+
+#### 7. Test Attestation
+```bash
+# Health check
+curl http://localhost:8080/api/v1/health
+
+# Status check (should show enclave public key)
+curl http://localhost:8080/api/v1/status
+
+# Get attestation
+curl -X POST http://localhost:8080/api/v1/request \
+  -H "Content-Type: application/json" \
+  -d '{"method":"get_attestation","params":{"nonce":"test123"}}'
+```
+
+---
+
+## 📊 Current System Status
 
 ### ✅ Completed
 
-1. **Environment Setup** (100% Complete)
-   - Rust 1.91.0 installed
-   - Node.js 20.19.5 installed
-   - All dependencies installed
+1. **File Organization** (100% Complete)
+   - All loose scripts moved to `orbs-tee-scripts/scripts/`
+   - All documentation moved to `orbs-tee-scripts/docs/`
+   - Session snapshots in `orbs-tee-scripts/docs/snapshots/`
+   - `/home/ubuntu/` cleaned up
 
-2. **Enclave (Rust)** (100% Complete)
-   - Location: `/home/ubuntu/orbs-tee-enclave-nitro`
-   - Tests: **25/25 passing** ✅
-   - Price Oracle built successfully
-   - Binary: `examples/price-oracle/target/debug/price-oracle`
+2. **Repository Structure** (100% Complete)
+   - `orbs-tee-scripts` - 23 scripts, 29+ docs, 4 snapshots
+   - `orbs-tee-enclave-nitro` - Rust SDK with 25 passing tests
+   - `orbs-tee-host` - TypeScript host with full API
 
-3. **Host (TypeScript)** (95% Complete)
-   - Location: `/home/ubuntu/orbs-tee-host`
-   - Dependencies: 556 packages installed ✅
-   - TypeScript compiled ✅
-   - Configuration: `config.json` created ✅
-   - Mock Enclave: `examples/mock-enclave.ts` created ✅
-   - Tests: Currently running...
+3. **Nitro Infrastructure** (95% Complete)
+   - ✅ Nitro CLI installed (v1.4.3)
+   - ✅ Nitro kernel module loaded
+   - ✅ Nitro Enclaves enabled on EC2
+   - ❌ NSM device missing (needs reboot)
 
-4. **SSH Reconnection Protection** (100% Complete) ⭐ NEW
-   - Client keepalive configured
-   - Server keepalive script created
-   - tmux session management scripts created
-   - State save/restore system created
-   - Full documentation written
+4. **Services Running** (Development Mode)
+   - ✅ Mock enclave: `price-oracle-unix` on Unix socket
+   - ✅ Host API: Port 8080, working endpoints
+   - ✅ All endpoints tested and functional
 
-### ⚠️ In Progress
+### ⚠️ Pending
 
-- **Host Tests**: Running (jest processes active)
-- **Integration Testing**: Not started yet
-
-### 🔜 Next Steps
-
-1. **Verify host tests pass** - Wait for jest to complete
-2. **Test mock enclave integration** - Start mock + host + curl tests
-3. **Test real enclave integration** - Real price oracle communication
-4. **End-to-end testing** - Full system validation
+- **Reboot instance** to activate NSM device
+- **Rebuild EIF** after reboot
+- **Switch to real Nitro enclave** with attestation
+- **Test attestation endpoint** with real TEE
 
 ---
 
-## 🎯 What Just Happened
+## 🔧 Why Reboot is Needed
 
-### Problem
-You asked about handling SSH disconnections since you're working on a remote computer.
+The Nitro Enclave feature was enabled in AWS Console, and the kernel module is loaded, but the **NSM (Nitro Secure Module) device** `/dev/nsm` won't appear until the instance is rebooted.
 
-### Solution Implemented
-Created a comprehensive reconnection system with **3 layers of protection**:
+Without `/dev/nsm`:
+- ❌ Cannot generate attestation documents
+- ❌ Cannot access Nitro hardware
+- ❌ Enclave runs in mock mode only
 
-#### Layer 1: SSH Keepalive (Prevents Disconnection)
-- **Client config**: `~/.ssh/config` - Sends keepalive every 60s
-- **Server config**: `./ssh-server-keepalive.sh` - Run to configure server
-- **Result**: SSH stays alive for 2+ hours even when idle
-
-#### Layer 2: Persistent Sessions (Survives Disconnection)
-- **tmux integration**: `./dev-session.sh` - Creates 4-window development session
-  - Window 0: main (general commands)
-  - Window 1: enclave (Rust development)
-  - Window 2: host (TypeScript development)
-  - Window 3: test (API testing)
-- **Result**: All processes survive SSH disconnection
-
-#### Layer 3: State Tracking (Resume After Disconnection)
-- **Save state**: `./save-state.sh` - Captures current work
-- **Restore state**: `./restore-state.sh` - Shows what to restart
-- **Check status**: `./session-status.sh` - Shows what's running
-- **Result**: Know exactly where you were and what was running
+After reboot with `/dev/nsm`:
+- ✅ Real TEE attestation available
+- ✅ Hardware-backed key storage
+- ✅ AWS certificate chain verification
+- ✅ Production-ready enclave
 
 ---
 
-## 🚀 How to Use (Simple Workflow)
+## 📂 Repository Organization
 
-### Every Time You Connect
+### orbs-tee-scripts/
+```
+scripts/
+├── Shell Scripts (16 files)
+│   ├── test-endpoints.sh
+│   ├── setup-testing.sh
+│   ├── guardian-setup.sh
+│   ├── verify-enclave.sh
+│   ├── session-tracker.sh
+│   └── ...
+├── Python Scripts (5 files)
+│   ├── test-enclave.py
+│   ├── http-attestation-server.py
+│   ├── vsock-to-unix-bridge.py
+│   └── ...
+└── Service Files (2 files)
+    ├── orbs-tee-host.service
+    └── orbs-tee-enclave.service
 
-```bash
-# 1. SSH to server
-ssh your-user@your-server
-
-# 2. Start tmux session (or reattach if exists)
-./dev-session.sh
-
-# 3. Your work environment is ready!
-#    - Switch windows: Ctrl-b 0/1/2/3
-#    - Detach safely: Ctrl-b d
+docs/
+├── Core Documentation
+│   ├── CLAUDE.md
+│   ├── INTEGRATION_TESTING.md
+│   ├── OPS_MANUAL.md
+│   └── WORKING_ENDPOINTS.md
+├── Setup & Configuration (4 docs)
+├── Status & Results (5 docs)
+├── Troubleshooting (4 docs)
+├── Reference (5 docs)
+└── snapshots/
+    └── 4 historical session snapshots
 ```
 
-### Before Risky Operations
+### orbs-tee-enclave-nitro/
+- Rust SDK with ECDSA signing
+- 25 integration tests passing
+- Price oracle example ready
+- Cross-platform (Mac/Linux)
 
-```bash
-# Save current state
-./save-state.sh
-```
-
-### After Disconnection
-
-```bash
-# 1. SSH back in
-ssh your-user@your-server
-
-# 2. Check what survived
-./session-status.sh
-
-# 3. Reattach to tmux
-./dev-session.sh
-
-# 4. If needed, restore state
-./restore-state.sh
-```
+### orbs-tee-host/
+- TypeScript API server
+- Express-based REST endpoints
+- vsocket/Unix socket client
+- Configuration management
+- All dependencies installed
 
 ---
 
-## 📂 Files Created Today
+## 🎯 Next Steps After Reboot
 
-### Scripts (All Executable)
-```
-/home/ubuntu/
-├── dev-session.sh              # Start/attach tmux session
-├── session-status.sh           # Check all running processes
-├── save-state.sh               # Save current work state
-├── restore-state.sh            # Restore after reconnection
-└── ssh-server-keepalive.sh     # Configure SSH server (run once)
-```
-
-### Configuration
-```
-/home/ubuntu/
-├── .ssh/config                 # SSH client keepalive config
-└── config.json                 # Host configuration (already existed)
-```
-
-### Documentation
-```
-/home/ubuntu/
-├── RECONNECTION_GUIDE.md       # Complete guide to reconnection system
-├── WHERE_WE_LEFT_OFF.md        # This file
-├── SETUP_SUMMARY.md            # Initial setup summary
-├── INTEGRATION_TESTING.md      # Integration testing guide
-└── CLAUDE.md                   # Main project guide
-```
-
----
-
-## 🔧 Immediate Next Actions
-
-### 1. Configure SSH Server (One-Time)
-
-```bash
-# Run this once to configure server keepalive
-sudo ./ssh-server-keepalive.sh
-```
-
-This ensures the **server** also sends keepalive packets.
-
-### 2. Test the System
-
-```bash
-# Check tests completed
-./session-status.sh
-
-# If tests done, verify they passed
-cd /home/ubuntu/orbs-tee-host
-npm test
-
-# Start integration testing
-./dev-session.sh
-```
-
-### 3. Try It Out
-
-```bash
-# In tmux session
-./dev-session.sh
-
-# Switch to window 1 (Ctrl-b 1)
-# Start mock enclave
-cd /home/ubuntu/orbs-tee-host
-npx ts-node examples/mock-enclave.ts
-
-# Switch to window 2 (Ctrl-b 2)
-# Start host
-npm run dev
-
-# Switch to window 3 (Ctrl-b 3)
-# Test API
-curl http://localhost:8080/api/v1/health
-
-# Detach from tmux (Ctrl-b d)
-# Now disconnect SSH and reconnect - everything still works!
-```
-
----
-
-## 📊 System Architecture (Reminder)
-
-```
-┌─────────────┐
-│ Your Laptop │
-└──────┬──────┘
-       │ SSH (keepalive enabled)
-       ↓
-┌────────────────────────────┐
-│ Remote Server (AWS)        │
-│                            │
-│  ┌─────────────────────┐  │
-│  │ tmux Session        │  │
-│  │  ┌──────────────┐   │  │
-│  │  │ Window 1:    │   │  │
-│  │  │ Mock Enclave │   │  │
-│  │  │ (ts-node)    │   │  │
-│  │  └──────────────┘   │  │
-│  │  ┌──────────────┐   │  │
-│  │  │ Window 2:    │   │  │
-│  │  │ Host API     │   │  │
-│  │  │ (npm dev)    │   │  │
-│  │  └──────────────┘   │  │
-│  │  ┌──────────────┐   │  │
-│  │  │ Window 3:    │   │  │
-│  │  │ Testing      │   │  │
-│  │  └──────────────┘   │  │
-│  └─────────────────────┘  │
-│                            │
-│  Survives SSH disconnect   │
-└────────────────────────────┘
-```
+1. ✅ SSH back into instance
+2. ✅ Verify `/dev/nsm` exists
+3. ✅ Rebuild `price-oracle.eif`
+4. ✅ Stop mock enclave service
+5. ✅ Run real Nitro enclave
+6. ✅ Verify enclave running
+7. ✅ Test attestation endpoints
+8. ✅ Celebrate real TEE! 🎉
 
 ---
 
 ## 📚 Quick Reference
 
-### tmux Commands
+### Nitro CLI Location
 ```bash
-# Start/attach session
-./dev-session.sh
-
-# Switch windows
-Ctrl-b 0/1/2/3/n/p
-
-# Detach (keeps running)
-Ctrl-b d
-
-# List sessions
-tmux ls
-
-# Kill session
-tmux kill-session -t orbs-tee-dev
+/tmp/nitro-cli/build/install/usr/bin/nitro-cli
 ```
 
-### State Management
+### Key Paths
 ```bash
-./save-state.sh        # Save current work
-./restore-state.sh     # Restore after reconnect
-./session-status.sh    # Check what's running
+# Enclave source
+/home/ubuntu/orbs-tee-enclave-nitro/
+
+# Host source
+/home/ubuntu/orbs-tee-host/
+
+# Scripts repository
+/home/ubuntu/orbs-tee-scripts/
+
+# EIF file (to be rebuilt)
+/home/ubuntu/price-oracle.eif
+
+# Host config
+/home/ubuntu/orbs-tee-host/config.json
 ```
 
-### Testing Commands
+### Services
 ```bash
-# Enclave tests
-cd /home/ubuntu/orbs-tee-enclave-nitro
-cargo test --no-default-features
+# Check services
+systemctl status orbs-tee-host
+systemctl status orbs-tee-enclave
 
-# Host tests
-cd /home/ubuntu/orbs-tee-host
-npm test
+# Stop mock enclave
+sudo systemctl stop orbs-tee-enclave
 
-# Integration test
-# Terminal 1: npx ts-node examples/mock-enclave.ts
-# Terminal 2: npm run dev
-# Terminal 3: curl http://localhost:8080/api/v1/health
+# Restart host
+sudo systemctl restart orbs-tee-host
+```
+
+### Nitro Commands
+```bash
+# Check enclaves
+/tmp/nitro-cli/build/install/usr/bin/nitro-cli describe-enclaves
+
+# View console
+/tmp/nitro-cli/build/install/usr/bin/nitro-cli console --enclave-id <id>
+
+# Terminate enclave
+sudo /tmp/nitro-cli/build/install/usr/bin/nitro-cli terminate-enclave --enclave-id <id>
 ```
 
 ---
 
-## ✅ Verification Checklist
+## 🔍 Verification Checklist
 
-Before moving forward, verify:
+After reboot, verify:
 
-- [ ] SSH client config exists: `cat ~/.ssh/config`
-- [ ] Can run server config: `sudo ./ssh-server-keepalive.sh`
-- [ ] Can start tmux: `./dev-session.sh`
-- [ ] Can check status: `./session-status.sh`
-- [ ] Can save state: `./save-state.sh`
-- [ ] Host tests complete: Check jest output
-- [ ] Documentation accessible: `cat RECONNECTION_GUIDE.md`
-
----
-
-## 💡 Key Insights
-
-### What We Learned
-
-1. **SSH disconnections are solvable**:
-   - Client + server keepalive = rock-solid connection
-   - tmux = processes survive disconnections
-   - State tracking = always know what was running
-
-2. **Development workflow improved**:
-   - Multi-window setup (enclave, host, test)
-   - Easy context switching
-   - Quick status checks
-
-3. **Ready for long-running tasks**:
-   - Can run tests that take hours
-   - Can start services and disconnect
-   - Everything preserved
-
-### Best Practices Going Forward
-
-1. **Always work in tmux**: `./dev-session.sh`
-2. **Save state before risky ops**: `./save-state.sh`
-3. **Check status after reconnect**: `./session-status.sh`
-4. **Use window switching**: Ctrl-b 0/1/2/3
+- [ ] NSM device exists: `ls -la /dev/nsm`
+- [ ] Nitro CLI works: `/tmp/nitro-cli/build/install/usr/bin/nitro-cli --version`
+- [ ] Docker image exists: `docker images | grep orbs-tee-enclave`
+- [ ] EIF rebuilt: `ls -lh /home/ubuntu/price-oracle.eif`
+- [ ] Enclave running: `nitro-cli describe-enclaves` shows CID 16
+- [ ] Host connects: `curl http://localhost:8080/api/v1/health`
+- [ ] Attestation works: Test `/api/v1/request` with `get_attestation`
 
 ---
 
-## 🎯 Today's Goal (Original)
+## 💡 Important Notes
 
-We were working toward:
-1. ✅ Environment setup
-2. ✅ Enclave working and tested
-3. ⏳ Host working and tested (tests running)
-4. 🔜 Integration testing (mock enclave)
-5. 🔜 End-to-end testing (real enclave)
+### Why Things Are Where They Are
 
-**Plus NEW Goal Achieved**:
-- ✅ **Bulletproof SSH session management** 🛡️
+1. **Nitro CLI in /tmp**: Built from source, not system-installed. Consider moving to permanent location.
 
----
+2. **Mock enclave running**: The current `orbs-tee-enclave` service uses `price-oracle-unix` which doesn't require Nitro hardware. This is for development.
 
-## 🤝 Summary for Handoff
+3. **Host already configured for vsocket**: The `config.json` expects CID 16, which is typical for Nitro enclaves.
 
-**If someone else takes over or you return tomorrow:**
+4. **EIF needs rebuild**: The original EIF was deleted during cleanup. Docker image may still exist.
 
-1. **Read this file first**: `/home/ubuntu/WHERE_WE_LEFT_OFF.md`
-2. **Check current status**: `./session-status.sh`
-3. **Read reconnection guide**: `/home/ubuntu/RECONNECTION_GUIDE.md`
-4. **Start working**: `./dev-session.sh`
-5. **Continue testing**: See `INTEGRATION_TESTING.md`
+### What's Different After Reboot
 
-**The system is now production-ready for long-term development!**
+- `/dev/nsm` device will appear
+- Attestation will work
+- Real hardware-backed TEE
+- Production-ready signatures
+- AWS certificate chain available
 
 ---
 
-**Questions? Read**: `/home/ubuntu/RECONNECTION_GUIDE.md`
-**Problems?**: `./session-status.sh` will show you what's running
-**Need help?**: All scripts have `--help` or can be read (they're well-commented)
+## 🤝 Session Handoff
+
+**If continuing after reboot:**
+
+1. Read this file: `/home/ubuntu/orbs-tee-scripts/docs/WHERE_WE_LEFT_OFF.md`
+2. Check NSM: `ls -la /dev/nsm`
+3. Follow "After Reboot - Steps to Execute" section above
+4. Refer to `/home/ubuntu/orbs-tee-scripts/docs/ENABLE_NITRO_ENCLAVES.md` for details
+
+**All code is committed and pushed to GitHub!**
 
 ---
 
-*Created: 2025-11-03 by Claude Code*
-*Status: Ready for integration testing*
-*Next: Wait for host tests to complete, then start mock enclave testing*
+## 📖 Documentation References
+
+- **Main Guide**: `/home/ubuntu/CLAUDE.md`
+- **Integration Testing**: `/home/ubuntu/INTEGRATION_TESTING.md`
+- **Nitro Setup**: `/home/ubuntu/orbs-tee-scripts/docs/ENABLE_NITRO_ENCLAVES.md`
+- **Operations Manual**: `/home/ubuntu/orbs-tee-scripts/docs/OPS_MANUAL.md`
+- **API Reference**: `/home/ubuntu/orbs-tee-scripts/docs/WORKING_ENDPOINTS.md`
 
 ---
 
-## 🔄 Current Runtime Status
+*Last Action: Organized all files into repositories and pushed to GitHub*
+*Next Action: REBOOT INSTANCE to enable /dev/nsm device*
+*Goal: Switch from mock enclave to real Nitro enclave with attestation*
 
-**Auto-updated**: 2025-11-03 14:23 UTC
+---
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Enclave Tests | test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s | - |
-| Host Tests | ✅ Complete | Check: `./session-status.sh` |
-| Mock Enclave | ✅ Running | Port: Unix socket |
-| Host API | ✅ Running | Port: 8080 |
-| Real Enclave | ❌ Not running | Price Oracle |
+## 🚀 REBOOT NOW!
 
-**Quick Actions**:
-- Check status: `./session-status.sh`
-- Start session: `./dev-session.sh`
-- Save work: `./save-state.sh`
+```bash
+sudo reboot
+```
 
+Then follow the "After Reboot - Steps to Execute" section above.
