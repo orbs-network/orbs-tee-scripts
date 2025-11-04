@@ -146,6 +146,7 @@ curl -X POST http://localhost:8080/api/v1/request \
 
 ### Main Documentation
 - `/home/ubuntu/CLAUDE.md` - Workspace overview
+- `/home/ubuntu/GUARDIAN_DEPLOYMENT.md` - **Production deployment guide** ⭐
 - `/home/ubuntu/INTEGRATION_TESTING.md` - Detailed testing guide
 - `/home/ubuntu/SETUP_SUMMARY.md` - This file
 
@@ -166,44 +167,71 @@ curl -X POST http://localhost:8080/api/v1/request \
 On a new guardian system, run:
 
 ```bash
-# Download the installation script
-curl -o guardian-install.sh https://raw.githubusercontent.com/orbs-network/orbs-tee-scripts/main/guardian-install.sh
-
-# Make it executable
-chmod +x guardian-install.sh
-
-# Run as root
-sudo ./guardian-install.sh
+# Run the guardian setup script
+sudo /home/ubuntu/guardian-setup.sh
 ```
 
 The script will:
 1. ✅ Install all system prerequisites (Rust, Node.js, build tools)
-2. ✅ Clone the repositories
-3. ✅ Build and test the enclave
-4. ✅ Setup and build the host
-5. ✅ Create systemd service for the host
-6. ✅ Create helper scripts (start, test, status)
+2. ✅ Build and test the enclave
+3. ✅ Setup and build the host
+4. ✅ **Create systemd services (auto-start on boot)** ⭐
+5. ✅ Start the services
+6. ✅ Verify everything works
+
+**Time**: ~5 minutes on first run
+
+### What Gets Configured
+
+**Systemd Services**:
+- `orbs-tee-enclave.service` - Price Oracle enclave
+- `orbs-tee-host.service` - Host API server
+
+**Features**:
+- ✅ Auto-start on system boot
+- ✅ Auto-restart on failure (5s delay)
+- ✅ Proper dependency management (enclave → host)
+- ✅ Runs as ubuntu user (not root)
+- ✅ Complete logging to journald
 
 ### Post-Installation
 
-After running the installation script:
+After running the installation script, services are **automatically running**:
 
 ```bash
-# 1. Review configuration
-nano /home/ubuntu/orbs-tee/orbs-tee-host/config.production.json
+# 1. Check status
+systemctl status orbs-tee-enclave orbs-tee-host
 
 # 2. Test the system
-/home/ubuntu/orbs-tee/test-system.sh
+curl http://localhost:8080/api/v1/health
 
-# 3. Enable and start the service
-sudo systemctl enable orbs-tee-host
-sudo systemctl start orbs-tee-host
+# 3. Test price request
+curl -X POST http://localhost:8080/api/v1/request \
+  -H "Content-Type: application/json" \
+  -d '{"method":"get_price","params":{"symbol":"BTCUSDT"}}'
 
-# 4. Check status
-/home/ubuntu/orbs-tee/status.sh
+# 4. View logs
+journalctl -u orbs-tee-enclave -f
+journalctl -u orbs-tee-host -f
 
-# 5. View logs
-sudo journalctl -u orbs-tee-host -f
+# 5. Review configuration (optional)
+nano /home/ubuntu/orbs-tee-host/config.json
+```
+
+### Reboot Survivability ✅
+
+Services are configured to survive system reboots:
+
+```bash
+# Check auto-start is enabled
+systemctl is-enabled orbs-tee-enclave orbs-tee-host
+# Output: enabled, enabled
+
+# Reboot the system
+sudo reboot
+
+# After reboot, services start automatically
+# No manual intervention needed!
 ```
 
 ---
