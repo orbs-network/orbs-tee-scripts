@@ -1,301 +1,128 @@
-# ORBS TEE Development Scripts & Documentation
+# ORBS TEE Scripts & Documentation
 
-Helper scripts and documentation for ORBS TEE system development, testing, and deployment.
+This repository contains operational scripts and documentation for the ORBS TEE (Trusted Execution Environment) system.
 
-## 📦 What's Included
-
-### Scripts (`scripts/`)
-- `dev-session.sh` - Start/attach to persistent tmux development session
-- `session-status.sh` - Check status of all running services
-- `save-state.sh` - Save current development state
-- `restore-state.sh` - Restore state after reconnection
-- `ssh-server-keepalive.sh` - Configure SSH server for long sessions
-- `update-summary.sh` - Update session progress summary
-
-### Documentation (`docs/`)
-- `CLAUDE.md` - Main workspace guide
-- `INTEGRATION_TESTING.md` - Complete integration testing guide
-- `SETUP_SUMMARY.md` - Initial setup summary
-- `TEST_RESULTS.md` - Test results and reports
-- `REMOTE_TESTING.md` - Remote API testing guide
-- `FINAL_STATUS.md` - Current system status
-- `WHERE_WE_LEFT_OFF.md` - Session progress tracker
-- `RECONNECTION_GUIDE.md` - SSH persistence guide
-- `PERMISSIONS.md` - Approved commands reference
-
-## 🚀 Quick Start
-
-```bash
-# Clone this repo
-git clone https://github.com/orbs-network/orbs-tee-scripts.git
-cd orbs-tee-scripts
-
-# Make scripts executable
-chmod +x scripts/*.sh
-
-# Configure SSH for persistence
-sudo ./scripts/ssh-server-keepalive.sh
-
-# Start development session
-./scripts/dev-session.sh
-```
-
-## 📖 Key Features
-
-### 1. Session Persistence
-Never lose work due to SSH disconnections:
-- Automatic reconnection with SSH keepalive
-- tmux sessions that survive disconnects
-- State tracking and restoration
-
-### 2. Development Workflow
-Streamlined development with:
-- Multi-window tmux setup (enclave, host, test)
-- Quick status checks
-- Automated state saving
-
-### 3. Comprehensive Documentation
-Everything you need to know:
-- Setup guides
-- Testing procedures
-- API references
-- Troubleshooting
-
-## 🎯 Use Cases
-
-### For Developers
-- Quick environment setup
-- Persistent development sessions
-- Easy testing and debugging
-
-### For Guardians
-- Production deployment scripts
-- System monitoring
-- State management
-
-### For CI/CD
-- Automated testing
-- Status reporting
-- State verification
-
-## 📋 Requirements
-
-- Linux (Ubuntu 20.04+ recommended)
-- tmux (for persistent sessions)
-- Git (for version control)
-- Bash 4.0+
-
-## 🔧 Configuration
-
-### SSH Keepalive
-
-Run once to configure SSH server:
-```bash
-sudo ./scripts/ssh-server-keepalive.sh
-```
-
-This configures:
-- 60-second keepalive interval
-- 2-hour timeout (120 missed keepalives)
-- Automatic reconnection
-
-### Custom Configuration
-
-Edit `.claude-permissions.json` to customize:
-- Approved bash commands
-- Read/write paths
-- Tool permissions
-
-## 📚 Documentation
-
-### For First-Time Setup
-1. Read `docs/CLAUDE.md` - Workspace overview
-2. Read `docs/SETUP_SUMMARY.md` - What was installed
-3. Follow `docs/INTEGRATION_TESTING.md` - Testing guide
-
-### For Daily Development
-1. Run `./scripts/dev-session.sh` - Start working
-2. Check `./scripts/session-status.sh` - View status
-3. Save `./scripts/save-state.sh` - Before leaving
-
-### For Deployment
-1. Review `docs/FINAL_STATUS.md` - Current state
-2. Follow `docs/REMOTE_TESTING.md` - API testing
-3. Check `docs/PERMISSIONS.md` - Security reference
-
-## 🛠️ Script Reference
-
-### `dev-session.sh`
-Start or attach to tmux development session with 4 windows:
-- **main**: General commands
-- **enclave**: Rust development
-- **host**: TypeScript development
-- **test**: API testing
-
-```bash
-./scripts/dev-session.sh [session-name]
-```
-
-### `session-status.sh`
-Check status of:
-- Tmux/screen sessions
-- Running processes (enclave, host, mock)
-- Unix sockets
-- Network ports
-- Last saved state
-
-```bash
-./scripts/session-status.sh
-```
-
-### `save-state.sh`
-Save current state to JSON:
-- Running processes
-- Socket status
-- Port usage
-- Working directory
-- Test results
-
-```bash
-./scripts/save-state.sh
-```
-
-### `restore-state.sh`
-Display restoration hints after reconnection:
-- What was running
-- How to restart services
-- Where you left off
-
-```bash
-./scripts/restore-state.sh
-```
-
-### `ssh-server-keepalive.sh`
-Configure SSH server for persistent connections:
-- Enables TCP keepalive
-- Sets client alive interval
-- Configures timeout
-
-```bash
-sudo ./scripts/ssh-server-keepalive.sh
-```
-
-### `update-summary.sh`
-Update progress summary with current status:
-- Process status
-- Test results
-- Runtime information
-
-```bash
-./scripts/update-summary.sh
-```
-
-## 🔒 Security
-
-### Permissions
-All scripts follow least-privilege principle:
-- Read-only where possible
-- Explicit write permissions
-- No destructive operations without confirmation
-
-### SSH Security
-Keepalive configuration:
-- Safe for development
-- Consider shorter timeouts for production
-- Compatible with AWS Security Groups
-
-## 🐛 Troubleshooting
-
-### tmux Not Found
-```bash
-sudo apt-get update && sudo apt-get install tmux
-```
-
-### Script Not Executable
-```bash
-chmod +x scripts/*.sh
-```
-
-### Permission Denied
-```bash
-# For SSH server config:
-sudo ./scripts/ssh-server-keepalive.sh
-
-# For other scripts:
-chmod +x scripts/*.sh
-```
-
-### Session Won't Attach
-```bash
-# Kill hung sessions
-tmux kill-server
-
-# Start fresh
-./scripts/dev-session.sh
-```
-
-## 📊 File Structure
+## Repository Structure
 
 ```
 orbs-tee-scripts/
-├── README.md                      # This file
-├── .gitignore                     # Git ignore rules
-├── .claude-permissions.json       # Permissions config
-├── scripts/
-│   ├── dev-session.sh             # Tmux session manager
-│   ├── session-status.sh          # Status checker
-│   ├── save-state.sh              # State saver
-│   ├── restore-state.sh           # State restorer
-│   ├── ssh-server-keepalive.sh    # SSH config
-│   └── update-summary.sh          # Summary updater
-└── docs/
-    ├── CLAUDE.md                  # Workspace guide
-    ├── INTEGRATION_TESTING.md     # Testing guide
-    ├── SETUP_SUMMARY.md           # Setup summary
-    ├── TEST_RESULTS.md            # Test results
-    ├── REMOTE_TESTING.md          # Remote testing
-    ├── FINAL_STATUS.md            # Current status
-    ├── WHERE_WE_LEFT_OFF.md       # Progress tracker
-    ├── RECONNECTION_GUIDE.md      # SSH guide
-    └── PERMISSIONS.md             # Permissions reference
+├── docs/                    # Documentation
+│   ├── OPS_MANUAL.md       # Operations manual (service mgmt, logs, debugging)
+│   ├── WORKING_ENDPOINTS.md # API reference with examples
+│   ├── SYSTEM_STATUS.md    # Current system status and configuration
+│   └── ...
+└── scripts/                 # Operational scripts
+    ├── test-endpoints.sh   # Comprehensive endpoint testing
+    ├── setup-testing.sh    # Initial setup script
+    └── ...
 ```
 
-## 🤝 Contributing
+## Quick Start
 
-This repo is part of the ORBS TEE project. To contribute:
+### Test All Endpoints
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+```bash
+cd /home/ubuntu/orbs-tee-scripts
+./scripts/test-endpoints.sh
+```
 
-## 📜 License
+Run in verbose mode:
+```bash
+VERBOSE=true ./scripts/test-endpoints.sh
+```
 
-Part of the ORBS Network - see main project for license details.
+### Operations Manual
 
-## 🔗 Related Repositories
+For service management, troubleshooting, and debugging:
+```bash
+cat docs/OPS_MANUAL.md
+```
 
-- [orbs-tee-enclave-nitro](https://github.com/orbs-network/orbs-tee-enclave-nitro) - Rust enclave SDK
-- [orbs-tee-host](https://github.com/orbs-network/orbs-tee-host) - TypeScript host
-- [orbs-tee-protocol](https://github.com/orbs-network/orbs-tee-protocol) - Protocol definitions
+### Check System Status
 
-## ✅ Testing
+```bash
+cat docs/SYSTEM_STATUS.md
+```
 
-All scripts are tested on:
-- Ubuntu 24.04 LTS
-- AWS EC2 instances
-- macOS (where applicable)
+### View Working Endpoints
 
-## 📞 Support
+```bash
+cat docs/WORKING_ENDPOINTS.md
+```
 
-For issues or questions:
-- Open an issue on GitHub
-- Check documentation in `docs/`
-- Review troubleshooting section above
+## Documentation
+
+### Operations
+- **[OPS_MANUAL.md](docs/OPS_MANUAL.md)** - Complete operations guide
+  - Service management (start/stop/restart)
+  - Viewing logs
+  - Troubleshooting common issues
+  - Rebuilding components
+  - Switching between Unix socket and Nitro enclave
+
+### API Reference
+- **[WORKING_ENDPOINTS.md](docs/WORKING_ENDPOINTS.md)** - API endpoint documentation
+  - Health and status checks
+  - Cryptocurrency price endpoints
+  - Attestation endpoints
+  - Example curl commands
+  - Expected responses
+
+### System Status
+- **[SYSTEM_STATUS.md](docs/SYSTEM_STATUS.md)** - Current system status
+  - Configuration summary
+  - Test results
+  - Performance metrics
+  - Quick reference commands
+
+## Scripts
+
+### test-endpoints.sh
+
+Comprehensive automated testing script with 10 test scenarios:
+
+1. Health Check
+2. Status Check
+3. Bitcoin Price (BTCUSDT)
+4. Ethereum Price (ETHUSDT)
+5. Binance Coin Price (BNBUSDT)
+6. Solana Price (SOLUSDT)
+7. Get Attestation
+8. Stability Test (5 consecutive requests)
+9. Response Time Test
+10. Signature Verification
+
+**Features:**
+- Color-coded output (green=pass, red=fail)
+- JSON validation
+- HTTP status checking
+- Field existence validation
+- Summary statistics
+- Verbose mode option
+
+## Current System Status
+
+✅ **All systems operational**
+- Server running on port 8080
+- Unix socket enclave with network access
+- Real-time price feeds from Binance
+- Cryptographic signatures on all responses
+- 100% test success rate
+
+## Related Repositories
+
+- **[orbs-tee-host](https://github.com/orbs-network/orbs-tee-host)** - TypeScript host API server
+- **[orbs-tee-enclave-nitro](https://github.com/orbs-network/orbs-tee-enclave-nitro)** - Rust enclave SDK
+
+## Support
+
+For operational issues:
+1. Check logs: `sudo journalctl -u orbs-tee-host -f`
+2. Verify services: `sudo systemctl status orbs-tee-host orbs-tee-enclave`
+3. Run tests: `./scripts/test-endpoints.sh`
+4. Review OPS_MANUAL.md for troubleshooting
 
 ---
 
-**Made with ❤️ for ORBS TEE Development**
-
-Last Updated: 2025-11-03
+**Last Updated:** 2025-11-04  
+**Status:** Production Ready
